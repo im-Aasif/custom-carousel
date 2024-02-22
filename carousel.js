@@ -28,6 +28,7 @@ class Carousel extends HTMLElement {
 	constructor() {
 		super();
 		this.initCarousel();
+		this.startX = null;
 	}
 
 	initCarousel() {
@@ -35,6 +36,7 @@ class Carousel extends HTMLElement {
 		this.shadowRoot.appendChild(carouselTemplate.content.cloneNode(true));
 		const slides = this.shadowRoot.querySelectorAll(".slide");
 		const indicator = this.shadowRoot.querySelector("#indicator");
+		this.slider = this.shadowRoot.querySelector('.slider');
 		this.nextBtn = this.shadowRoot.querySelector('.btn-next');
 		this.prevBtn = this.shadowRoot.querySelector('.btn-prev');
 		this.currentSlide = 0;
@@ -63,34 +65,73 @@ class Carousel extends HTMLElement {
 				dots[target].classList.add('button-selected');
 			}
 		});
+
+		this.slider.addEventListener('touchstart', (e) => this.touchStart(e));
+		this.slider.addEventListener('touchmove', (e) => this.touchMove(e));
+		this.slider.addEventListener('touchend', (e) => this.touchEnd(e));
+		this.slider.addEventListener('mousedown', (e) => this.mouseStart(e));
+		this.slider.addEventListener('mouseup', (e) => this.mouseEnd(e));
+		this.slider.addEventListener('mousemove', (e) => this.mouseMove(e));
+
+	}
+
+	updateCarousel(slides, dots) {
+		slides.forEach((slide, idx) => slide.style.transform = `translateX(${100 * (idx - this.currentSlide)}%)`);
+		dots.forEach((btn, idx) => {
+			if (idx === this.currentSlide) btn.classList.add('button-selected');
+			else btn.classList.remove('button-selected');
+		});
+	}
+
+	mouseStart(e) {
+		this.startX = e.clientX;
+	}
+
+	mouseMove(e) {
+		if (!this.startX) return;
+		const xDiff = e.clientX - this.startX;
+		if (xDiff > 0) this.prevBtnHandler();
+		else this.nextBtnHandler();
+		this.startX = null;
+	}
+
+	mouseEnd(e) {
+		this.startX = null;
+	}
+
+	touchStart(e) {
+		this.startX = e.touches[0].clientX;
+	}
+
+	touchMove(e) {
+		if (!this.startX) return;
+		const xDiff = e.touches[0].clientX - this.startX;
+		if (xDiff > 0) this.prevBtnHandler()
+		else this.nextBtnHandler();
+		this.startX = null;
+	}
+
+	touchEnd(e) {
+		this.startX = null;
 	}
 
 	nextBtnHandler() {
 		const slides = this.shadowRoot.querySelectorAll(".slide");
+		const dots = this.shadowRoot.querySelectorAll('#indicator button');
 		let maxSlide = slides.length - 1;
 
 		if (this.currentSlide === maxSlide) this.currentSlide = 0;
 		else this.currentSlide++;
-
-		slides.forEach((slide, idx) => slide.style.transform = `translateX(${100 * (idx - this.currentSlide)}%)`);
-		const dots = this.shadowRoot.querySelectorAll('#indicator button');
-		dots.forEach((btn, idx) => {
-			if (idx === this.currentSlide) btn.classList.add('button-selected');
-			else btn.classList.remove('button-selected');
-		});
+		this.updateCarousel(slides, dots);
 	}
 
 	prevBtnHandler() {
 		const slides = this.shadowRoot.querySelectorAll(".slide");
+		const dots = this.shadowRoot.querySelectorAll('#indicator button');
 		let maxSlide = slides.length - 1;
 		if (this.currentSlide === 0) this.currentSlide = maxSlide;
 		else this.currentSlide--;
-		slides.forEach((slide, idx) => slide.style.transform = `translateX(${100 * (idx - this.currentSlide)}%)`);
-		const dots = this.shadowRoot.querySelectorAll('#indicator button');
-		dots.forEach((btn, idx) => {
-			if (idx === this.currentSlide) btn.classList.add('button-selected');
-			else btn.classList.remove('button-selected');
-		});
+		this.updateCarousel(slides, dots);
 	}
 
 	runCarousel = () => {
@@ -106,6 +147,14 @@ class Carousel extends HTMLElement {
 	disconnectedCallback() {
 		this.prevBtn && this.prevBtn.removeEventListener('click', this.prevBtnHandler);
 		this.nextBtn && this.nextBtn.removeEventListener('click', this.prevBtnHandler);
+		if (this.slider) {
+			this.slider.removeEventListener('touchstart', this.touchStart);
+			this.slider.removeEventListener('touchend', this.touchEnd);
+			this.slider.removeEventListener('touchmove', this.touchMove);
+			this.slider.removeEventListener('mousedown', this.mouseStart);
+			this.slider.removeEventListener('mouseup', this.mouseEnd);
+			this.slider.removeEventListener('mousemove', this.mouseMove);
+		}
 		clearInterval(this.intervalId);
 	}
 }
